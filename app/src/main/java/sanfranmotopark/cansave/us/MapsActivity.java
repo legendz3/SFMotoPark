@@ -4,6 +4,7 @@ import android.app.Dialog;
 import android.content.IntentSender;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
@@ -60,6 +61,8 @@ public class MapsActivity extends FragmentActivity implements
      * <p>
      * This should only be called once and when we are sure that {@link #mMap} is not null.
      */
+    private final Handler handler = new Handler();
+
     private void setUpMap() {
 
         dataSource = new ParkingLocationDataSource(this);
@@ -78,42 +81,49 @@ public class MapsActivity extends FragmentActivity implements
 
             @Override
             public void onCameraChange(CameraPosition cameraPosition) {
-                MarkerOptions markerPOI;
-
-                Projection projection = mMap.getProjection();
-                LatLngBounds bounds = projection.getVisibleRegion().latLngBounds;
-                for (ParkingLocation location : locations) {
-                    if (bounds.contains(location.getLatLng())) {
-                        markerPOI = new MarkerOptions();
-                        markerPOI.position(location.getLatLng());
-                        switch (location.getArea()) {
-                            case MC1:
-                                markerPOI.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
-                                break;
-                            case MC2:
-                                markerPOI.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE));
-                                break;
-                            case MC3:
-                                markerPOI.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_CYAN));
-                                break;
-                            case MC5:
-                                markerPOI.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
-                                break;
-                            case PortMC1:
-                                markerPOI.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE));
-                                break;
-                            case PortMC2:
-                                markerPOI.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA));
-                                break;
-                        }
-                        mMap.addMarker(markerPOI);
-                    }
-                }
+                handler.post(addMarkers);
 
             }
         });
 
     }
+
+    private final Runnable addMarkers = new Runnable() {
+        @Override
+        public void run() {
+            MarkerOptions markerPOI;
+
+            Projection projection = mMap.getProjection();
+            LatLngBounds bounds = projection.getVisibleRegion().latLngBounds;
+            for (ParkingLocation location : locations) {
+                if (bounds.contains(location.getLatLng())) {
+                    markerPOI = new MarkerOptions();
+                    markerPOI.position(location.getLatLng());
+                    switch (location.getArea()) {
+                        case MC1:
+                            markerPOI.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE));
+                            break;
+                        case MC2:
+                            markerPOI.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE));
+                            break;
+                        case MC3:
+                            markerPOI.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_CYAN));
+                            break;
+                        case MC5:
+                            markerPOI.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+                            break;
+                        case PortMC1:
+                            markerPOI.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE));
+                            break;
+                        case PortMC2:
+                            markerPOI.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA));
+                            break;
+                    }
+                    mMap.addMarker(markerPOI);
+                }
+            }
+        }
+    };
 
     /*
     * Called by Location Services when the request to connect the
