@@ -25,6 +25,8 @@ public class DataBaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_SMART_METE = "SMART_METE";
     public static final String COLUMN_RATEAREA = "RATEAREA";
     public static final String COLUMN_METER_TYPE = "METER_TYPE";
+    public static final String COLUMN_STREET_NUM = "STREET_NUM";
+    public static final String COLUMN_STREET_NAME = "STREETNAME";
 
     private SQLiteDatabase myDataBase;
 

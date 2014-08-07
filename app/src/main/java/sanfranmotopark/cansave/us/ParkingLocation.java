@@ -67,7 +67,7 @@ public class ParkingLocation {
     }
 
     public void setMultiSpace(String meterType) {
-        if (meterType == "MS")
+        if (meterType.equals("MS"))
             isMultiSpace = true;
         else
             isMultiSpace = false;
@@ -80,7 +80,7 @@ public class ParkingLocation {
     }
 
     public void setSmartMeter(String smartMeter) {
-        if (smartMeter == "Y")
+        if (smartMeter.equals("Y"))
             isSmartMeter = true;
         else
             isSmartMeter = false;
@@ -97,5 +97,15 @@ public class ParkingLocation {
     public void setArea(String area) {
         Area = RateArea.valueOf(area);
     }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String number, String street) {
+        this.address = number + " " + street;
+    }
+
+    private String address;
 }
 

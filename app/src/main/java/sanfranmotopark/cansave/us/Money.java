@@ -22,7 +22,7 @@ public class Money {
     }
 
     public static Money dollars(BigDecimal amount, BigDecimal range) {
-        return new Money(amount, USD);
+        return new Money(amount, range, USD, DEFAULT_ROUNDING);
     }
 
     Money(BigDecimal amount, Currency currency) {
@@ -56,13 +56,13 @@ public class Money {
 
     @Override
     public String toString() {
-        if (range == BigDecimal.ZERO)
+        if (this.range.compareTo(BigDecimal.ZERO) == 0)
             return getCurrency().getSymbol() + " " + getAmount();
         return getCurrency().getSymbol() + " " + getAmount() + " - " + getCurrency().getSymbol() + " " + getRange();
     }
 
     public String toString(Locale locale) {
-        if (range == BigDecimal.ZERO)
+        if (this.range.compareTo(BigDecimal.ZERO) == 0)
             return getCurrency().getSymbol(locale) + " " + getAmount();
         return getCurrency().getSymbol(locale) + " " + getAmount() + " - " + getCurrency().getSymbol(locale) + " " + getRange();
     }

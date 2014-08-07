@@ -1,13 +1,21 @@
 package sanfranmotopark.cansave.us;
 
 import android.app.Dialog;
+import android.content.Context;
+import android.content.Intent;
 import android.content.IntentSender;
 import android.location.Location;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -23,9 +31,13 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 
 public class MapsActivity extends FragmentActivity implements
         GooglePlayServicesClient.ConnectionCallbacks,
@@ -36,6 +48,16 @@ public class MapsActivity extends FragmentActivity implements
     private ParkingLocationDataSource dataSource;
     private LocationClient locationClient;
     private ParkingLocation[] locations;
+    private MapWrapperLayout mapWrapperLayout;
+    private ViewGroup infoWindow;
+    private TextView infoAddress;
+    private TextView infoPrice;
+    private ImageView infoTakesCardImage;
+    private ImageButton infoButton;
+    private OnInfoWindowElemTouchListener infoButtonListener;
+
+    private Map<Marker, ParkingLocation> allMarkersMap = new HashMap<Marker, ParkingLocation>();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +96,7 @@ public class MapsActivity extends FragmentActivity implements
         locations = dataSource.getAllLocations().toArray(new ParkingLocation[0]);
         LatLng sf = new LatLng(37.785737, -122.418074);
         mMap = ((MapFragment) getFragmentManager().findFragmentById(R.id.map)).getMap();
+        mapWrapperLayout = (MapWrapperLayout) findViewById(R.id.map_relative_layout);
         mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         mMap.setMyLocationEnabled(true);
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(sf, 13));
@@ -81,8 +104,61 @@ public class MapsActivity extends FragmentActivity implements
 
             @Override
             public void onCameraChange(CameraPosition cameraPosition) {
+                handler.removeCallbacks(addMarkers);
                 handler.post(addMarkers);
 
+            }
+        });
+
+        // MapWrapperLayout initialization
+        // 39 - default marker height
+        // 20 - offset between the default InfoWindow bottom edge and it's content bottom edge
+        mapWrapperLayout.init(mMap, getPixelsFromDp(this, 39 + 20));
+
+        // We want to reuse the info window for all the markers,
+        // so let's create only one class member instance
+        this.infoWindow = (ViewGroup) getLayoutInflater().inflate(R.layout.info_window, null);
+        this.infoAddress = (TextView) infoWindow.findViewById(R.id.address);
+        this.infoPrice = (TextView) infoWindow.findViewById(R.id.price);
+        this.infoButton = (ImageButton) infoWindow.findViewById(R.id.imageButton);
+        this.infoTakesCardImage = (ImageView) infoWindow.findViewById(R.id.takes_credit_card);
+
+
+        // Setting custom OnTouchListener which deals with the pressed state
+        // so it shows up
+        this.infoButtonListener = new OnInfoWindowElemTouchListener(infoButton,
+                getResources().getDrawable(R.drawable.ic_menu_directions),
+                getResources().getDrawable(R.drawable.ic_menu_directions)) {
+            @Override
+            protected void onClickConfirmed(View v, Marker marker) {
+                String uri = String.format(Locale.ENGLISH, "http://maps.google.com/maps?daddr=%f,%f (%s)", marker.getPosition().latitude, marker.getPosition().longitude, "Meter");
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+                intent.setClassName("com.google.android.apps.maps", "com.google.android.maps.MapsActivity");
+                startActivity(intent);
+            }
+        };
+        this.infoButton.setOnTouchListener(infoButtonListener);
+
+        mMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
+            @Override
+            public View getInfoWindow(Marker marker) {
+                return null;
+            }
+
+            @Override
+            public View getInfoContents(Marker marker) {
+                // Setting up the infoWindow with current's marker info
+                ParkingLocation location = allMarkersMap.get(marker);
+                infoAddress.setText(location.getAddress());
+                infoPrice.setText(location.getCost().toString());
+                int visibility = location.isSmartMeter() ? View.VISIBLE : View.GONE;
+                infoTakesCardImage.setVisibility(visibility);
+                infoButtonListener.setMarker(marker);
+
+                // We must call this to set the current marker and infoWindow references
+                // to the MapWrapperLayout
+                mapWrapperLayout.setMarkerWithInfoWindow(marker, infoWindow);
+                return infoWindow;
             }
         });
 
@@ -119,7 +195,9 @@ public class MapsActivity extends FragmentActivity implements
                             markerPOI.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA));
                             break;
                     }
-                    mMap.addMarker(markerPOI);
+                    Marker marker = mMap.addMarker(markerPOI);
+
+                    allMarkersMap.put(marker, location);
                 }
             }
         }
@@ -232,5 +310,8 @@ public class MapsActivity extends FragmentActivity implements
         }
     }
 
-
+    public static int getPixelsFromDp(Context context, float dp) {
+        final float scale = context.getResources().getDisplayMetrics().density;
+        return (int) (dp * scale + 0.5f);
+    }
 }

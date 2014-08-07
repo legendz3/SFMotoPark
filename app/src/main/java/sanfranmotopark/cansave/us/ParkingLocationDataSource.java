@@ -17,7 +17,7 @@ public class ParkingLocationDataSource {
     private DataBaseHelper dbHelper;
     private String[] allColumns = {DataBaseHelper.COLUMN_ID, DataBaseHelper.COLUMN_LAT,
             DataBaseHelper.COLUMN_LONG, DataBaseHelper.COLUMN_METER_TYPE, DataBaseHelper.COLUMN_RATEAREA,
-            DataBaseHelper.COLUMN_SMART_METE};
+            DataBaseHelper.COLUMN_SMART_METE, DataBaseHelper.COLUMN_STREET_NUM, DataBaseHelper.COLUMN_STREET_NAME};
 
     public ParkingLocationDataSource(Context context) {
         dbHelper = new DataBaseHelper(context);
@@ -56,6 +56,7 @@ public class ParkingLocationDataSource {
         location.setArea(c.getString(c.getColumnIndex(DataBaseHelper.COLUMN_RATEAREA)));
         location.setMultiSpace(c.getString(c.getColumnIndex(DataBaseHelper.COLUMN_METER_TYPE)));
         location.setSmartMeter(c.getString(c.getColumnIndex(DataBaseHelper.COLUMN_SMART_METE)));
+        location.setAddress(c.getString(c.getColumnIndex(DataBaseHelper.COLUMN_STREET_NUM)), c.getString(c.getColumnIndex(DataBaseHelper.COLUMN_STREET_NAME)));
 
         return location;
     }
