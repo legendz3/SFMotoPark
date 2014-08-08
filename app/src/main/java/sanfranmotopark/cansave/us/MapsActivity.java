@@ -62,6 +62,7 @@ public class MapsActivity extends Fragment implements
     private OnInfoWindowElemTouchListener infoButtonListener;
     private FragmentActivity myContext;
     private static View view;
+    private Boolean showClosestMarker = false;
 
     private final Handler handler = new Handler();
     private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
@@ -80,9 +81,32 @@ public class MapsActivity extends Fragment implements
         } catch (InflateException e) {
         /* map is already there, just return view as it is */
         }
+        locationClient = new LocationClient(myContext, this, this);
+
         Boolean showCloeset = getArguments().getBoolean(ARG_SHOW_CLOSEST_LOCATION);
-        setUpMap(inflater, showCloeset);
+        setUpMap(inflater);
+        this.showClosestMarker = showCloeset;
         return view;
+    }
+
+    private void showCloesetMarker() {
+        Location location = locationClient.getLastLocation();
+        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+
+        Marker marker = null;
+        for (Marker key : allMarkersMap.keySet()) {
+            if (marker == null)
+                marker = key;
+            else {
+                if (LatLngUtils.distanceSquared(latLng, key.getPosition()) <
+                        LatLngUtils.distanceSquared(latLng, marker.getPosition())) {
+                    marker = key;
+                }
+            }
+        }
+        marker.showInfoWindow();
+        mMap.animateCamera(CameraUpdateFactory.newLatLng(marker.getPosition()), 250, null);
+        showClosestMarker = false;
     }
 
     @Override
@@ -106,8 +130,7 @@ public class MapsActivity extends Fragment implements
      * This is where we can add markers or lines, add listeners or move the camera.
      * This should only be called once and when we are sure that {@link #mMap} is not null.
      */
-    private void setUpMap(LayoutInflater inflater, Boolean showCloeset) {
-        locationClient = new LocationClient(myContext, this, this);
+    private void setUpMap(LayoutInflater inflater) {
         dataSource = new ParkingLocationDataSource(myContext);
         try {
             dataSource.open();
@@ -127,7 +150,6 @@ public class MapsActivity extends Fragment implements
             public void onCameraChange(CameraPosition cameraPosition) {
                 handler.removeCallbacks(addMarkers);
                 handler.post(addMarkers);
-
             }
         });
 
@@ -189,11 +211,10 @@ public class MapsActivity extends Fragment implements
         @Override
         public void run() {
             MarkerOptions markerPOI;
-
             Projection projection = mMap.getProjection();
             LatLngBounds bounds = projection.getVisibleRegion().latLngBounds;
             for (ParkingLocation location : locations) {
-                if (bounds.contains(location.getLatLng())) {
+                if (bounds.contains(location.getLatLng()) && !allMarkersMap.containsValue(location)) {
                     markerPOI = new MarkerOptions();
                     markerPOI.position(location.getLatLng());
                     switch (location.getArea()) {
@@ -221,6 +242,10 @@ public class MapsActivity extends Fragment implements
                     allMarkersMap.put(marker, location);
                 }
             }
+
+            if (showClosestMarker) {
+                showCloesetMarker();
+            }
         }
     };
 
@@ -234,6 +259,7 @@ public class MapsActivity extends Fragment implements
         // Display the connection status
         Toast.makeText(myContext, "Connected", Toast.LENGTH_SHORT).show();
         Location location = locationClient.getLastLocation();
+
         LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
         CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 16);
         mMap.animateCamera(cameraUpdate);
