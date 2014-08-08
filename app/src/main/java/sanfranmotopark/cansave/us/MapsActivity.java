@@ -1,6 +1,8 @@
 package sanfranmotopark.cansave.us;
 
+import android.app.Activity;
 import android.app.Dialog;
+import android.app.Fragment;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentSender;
@@ -11,6 +13,8 @@ import android.os.Handler;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.FragmentActivity;
 import android.util.Log;
+import android.view.InflateException;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -39,11 +43,12 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-public class MapsActivity extends FragmentActivity implements
+public class MapsActivity extends Fragment implements
         GooglePlayServicesClient.ConnectionCallbacks,
         GooglePlayServicesClient.OnConnectionFailedListener {
 
-    private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
+    public static String ARG_SHOW_CLOSEST_LOCATION = "ShowClosestLocation";
+
     private GoogleMap mMap; // Might be null if Google Play services APK is not available.
     private ParkingLocationDataSource dataSource;
     private LocationClient locationClient;
@@ -55,20 +60,40 @@ public class MapsActivity extends FragmentActivity implements
     private ImageView infoTakesCardImage;
     private ImageButton infoButton;
     private OnInfoWindowElemTouchListener infoButtonListener;
+    private FragmentActivity myContext;
+    private static View view;
 
+    private final Handler handler = new Handler();
+    private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
     private Map<Marker, ParkingLocation> allMarkersMap = new HashMap<Marker, ParkingLocation>();
 
-
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_maps);
-        locationClient = new LocationClient(this, this, this);
-        setUpMap();
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        if (view != null) {
+            ViewGroup parent = (ViewGroup) view.getParent();
+            if (parent != null)
+                parent.removeView(view);
+        }
+        try {
+            view = inflater.inflate(R.layout.activity_maps, container, false);
+        } catch (InflateException e) {
+        /* map is already there, just return view as it is */
+        }
+        Boolean showCloeset = getArguments().getBoolean(ARG_SHOW_CLOSEST_LOCATION);
+        setUpMap(inflater, showCloeset);
+        return view;
     }
 
     @Override
-    protected void onStart() {
+    public void onAttach(Activity activity) {
+        myContext = (FragmentActivity) activity;
+        super.onAttach(activity);
+    }
+
+
+    @Override
+    public void onStart() {
         super.onStart();
         // Connect the client.
         if (isGooglePlayServicesAvailable()) {
@@ -78,16 +103,12 @@ public class MapsActivity extends FragmentActivity implements
 
 
     /**
-     * This is where we can add markers or lines, add listeners or move the camera. In this case, we
-     * just add a marker near Africa.
-     * <p>
+     * This is where we can add markers or lines, add listeners or move the camera.
      * This should only be called once and when we are sure that {@link #mMap} is not null.
      */
-    private final Handler handler = new Handler();
-
-    private void setUpMap() {
-
-        dataSource = new ParkingLocationDataSource(this);
+    private void setUpMap(LayoutInflater inflater, Boolean showCloeset) {
+        locationClient = new LocationClient(myContext, this, this);
+        dataSource = new ParkingLocationDataSource(myContext);
         try {
             dataSource.open();
         } catch (IOException e) {
@@ -96,7 +117,7 @@ public class MapsActivity extends FragmentActivity implements
         locations = dataSource.getAllLocations().toArray(new ParkingLocation[0]);
         LatLng sf = new LatLng(37.785737, -122.418074);
         mMap = ((MapFragment) getFragmentManager().findFragmentById(R.id.map)).getMap();
-        mapWrapperLayout = (MapWrapperLayout) findViewById(R.id.map_relative_layout);
+        mapWrapperLayout = (MapWrapperLayout) myContext.findViewById(R.id.map_relative_layout);
         mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         mMap.setMyLocationEnabled(true);
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(sf, 13));
@@ -113,11 +134,11 @@ public class MapsActivity extends FragmentActivity implements
         // MapWrapperLayout initialization
         // 39 - default marker height
         // 20 - offset between the default InfoWindow bottom edge and it's content bottom edge
-        mapWrapperLayout.init(mMap, getPixelsFromDp(this, 39 + 20));
+        mapWrapperLayout.init(mMap, getPixelsFromDp(myContext, 39 + 20));
 
         // We want to reuse the info window for all the markers,
         // so let's create only one class member instance
-        this.infoWindow = (ViewGroup) getLayoutInflater().inflate(R.layout.info_window, null);
+        this.infoWindow = (ViewGroup) inflater.inflate(R.layout.info_window, null);
         this.infoAddress = (TextView) infoWindow.findViewById(R.id.address);
         this.infoPrice = (TextView) infoWindow.findViewById(R.id.price);
         this.infoButton = (ImageButton) infoWindow.findViewById(R.id.imageButton);
@@ -211,7 +232,7 @@ public class MapsActivity extends FragmentActivity implements
     @Override
     public void onConnected(Bundle dataBundle) {
         // Display the connection status
-        Toast.makeText(this, "Connected", Toast.LENGTH_SHORT).show();
+        Toast.makeText(myContext, "Connected", Toast.LENGTH_SHORT).show();
         Location location = locationClient.getLastLocation();
         LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
         CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(latLng, 16);
@@ -225,7 +246,7 @@ public class MapsActivity extends FragmentActivity implements
     @Override
     public void onDisconnected() {
         // Display the connection status
-        Toast.makeText(this, "Disconnected. Please re-connect.",
+        Toast.makeText(myContext, "Disconnected. Please re-connect.",
                 Toast.LENGTH_SHORT).show();
     }
 
@@ -245,7 +266,7 @@ public class MapsActivity extends FragmentActivity implements
             try {
                 // Start an Activity that tries to resolve the error
                 connectionResult.startResolutionForResult(
-                        this,
+                        myContext,
                         CONNECTION_FAILURE_RESOLUTION_REQUEST);
             /*
             * Thrown if Google Play services canceled the original
@@ -256,13 +277,13 @@ public class MapsActivity extends FragmentActivity implements
                 e.printStackTrace();
             }
         } else {
-            Toast.makeText(getApplicationContext(), "Sorry. Location services not available to you", Toast.LENGTH_LONG).show();
+            Toast.makeText(myContext.getApplicationContext(), "Sorry. Location services not available to you", Toast.LENGTH_LONG).show();
         }
     }
 
     private boolean isGooglePlayServicesAvailable() {
         // Check that Google Play services is available
-        int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
+        int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(myContext);
         // If Google Play services is available
         if (ConnectionResult.SUCCESS == resultCode) {
             // In debug mode, log the status
@@ -271,7 +292,7 @@ public class MapsActivity extends FragmentActivity implements
         } else {
             // Get the error dialog from Google Play services
             Dialog errorDialog = GooglePlayServicesUtil.getErrorDialog(resultCode,
-                    this,
+                    myContext,
                     CONNECTION_FAILURE_RESOLUTION_REQUEST);
 
             // If Google Play services can provide an error dialog
@@ -279,7 +300,7 @@ public class MapsActivity extends FragmentActivity implements
                 // Create a new DialogFragment for the error dialog
                 ErrorDialogFragment errorFragment = new ErrorDialogFragment();
                 errorFragment.setDialog(errorDialog);
-                errorFragment.show(getSupportFragmentManager(), "Location Updates");
+                errorFragment.show(myContext.getSupportFragmentManager(), "Location Updates");
             }
 
             return false;

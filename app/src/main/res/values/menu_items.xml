@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="menu_items">
+        <item>Map</item>
+        <item>Find Closest Meter</item>
+        <item>Help</item>
+        <item>About</item>
+    </string-array>
+</resources>
